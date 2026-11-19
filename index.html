@@ -1,1 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SheetChat</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+  >
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
 
+  <style>
+    /* 1. Full-bleed mobile-safe reset */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background-color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* 2. Viewport-locked iframe container (handles iOS keyboard resize) */
+    #frameWrap {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background-color: #f8fafc;
+    }
+
+    /* 3. Loader Container */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background-color: #0f172a;
+      color: #e2e8f0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      transition: opacity 0.35s ease;
+    }
+
+    /* 4. Spinner Animation */
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.16);
+      border-top: 4px solid #38bdf8;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      animation: spin 0.85s linear infinite;
+    }
+
+    .loader-label {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: #cbd5e1;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loader" aria-live="polite">
+    <div class="spinner"></div>
+    <div class="loader-label">Loading Xiafer...</div>
+  </div>
+
+  <div id="frameWrap">
+    <iframe
+      id="appFrame"
+      src="https://script.google.com/macros/s/AKfycbzmuY8xkWDgAZwffoy8V0Dh_Kh15dyMJfiytN1skw7uUJX8QwLj6G_zOn4bzsoj9IpJ3w/exec"
+      title="Xiafer"
+      allow="autoplay; clipboard-write"
+      onload="onFrameLoad()"
+    ></iframe>
+  </div>
+
+  <script>
+    (function () {
+      var loaderHidden = false;
+      var fallbackTimer = null;
+
+      function hideLoader(delayMs) {
+        if (loaderHidden) return;
+        loaderHidden = true;
+        if (fallbackTimer) {
+          clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+        }
+        var loader = document.getElementById('loader');
+        if (!loader) return;
+
+        setTimeout(function () {
+          loader.style.opacity = '0';
+          setTimeout(function () {
+            loader.style.display = 'none';
+          }, 360);
+        }, delayMs || 0);
+      }
+
+      // Hide loader immediately once the chat app signals its data is rendered
+      window.addEventListener('message', function (event) {
+        if (event && event.data && event.data.type === 'sheetchat_ready') {
+          hideLoader(60);
+        }
+      });
+
+      // Fallback when iframe onload completes (in case postMessage is blocked)
+      window.onFrameLoad = function () {
+        if (!loaderHidden) {
+          fallbackTimer = setTimeout(function () {
+            hideLoader(0);
+          }, 900);
+        }
+      };
+
+      // Safety fallback so loader never gets stuck indefinitely
+      setTimeout(function () {
+        hideLoader(0);
+      }, 10000);
+
+      // Sync wrapper height to visualViewport so iOS Safari keyboard never clips the chat bar
+      var frameWrap = document.getElementById('frameWrap');
+      function syncViewportHeight() {
+        if (!frameWrap || !window.visualViewport) return;
+        frameWrap.style.height = window.visualViewport.height + 'px';
+        frameWrap.style.top = window.visualViewport.offsetTop + 'px';
+      }
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncViewportHeight);
+        window.visualViewport.addEventListener('scroll', syncViewportHeight);
+        syncViewportHeight();
+      }
+    })();
+  </script>
+</body>
+</html>
